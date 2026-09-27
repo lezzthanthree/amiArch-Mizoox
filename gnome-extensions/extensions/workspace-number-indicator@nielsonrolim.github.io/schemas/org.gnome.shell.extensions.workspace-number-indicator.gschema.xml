@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.workspace-number-indicator"
+          path="/org/gnome/shell/extensions/workspace-number-indicator/">
+    <key name="show-total" type="b">
+      <default>true</default>
+      <summary>Show total number of workspaces</summary>
+      <description>When enabled, displays the current workspace as "current / total" (e.g. 2 / 4). When disabled, shows only the current number (e.g. 2).</description>
+    </key>
+    <key name="panel-position" type="s">
+      <choices>
+        <choice value="left"/>
+        <choice value="right"/>
+      </choices>
+      <default>'left'</default>
+      <summary>Panel position</summary>
+      <description>Where to display the indicator in the top bar: "left" or "right".</description>
+    </key>
+    <key name="left-placement" type="s">
+      <choices>
+        <choice value="before"/>
+        <choice value="after"/>
+      </choices>
+      <default>'after'</default>
+      <summary>Left box placement</summary>
+      <description>When placed on the left, whether to appear before or after the Activities button.</description>
+    </key>
+  </schema>
+</schemalist>

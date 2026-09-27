@@ -1,0 +1,68 @@
+[/]
+default='95894cfd-82f7-430d-af6e-84d168bc34f5'
+list=['b1dcc9dd-5262-4d8d-a863-c897e6d979b9', 'de8a9081-8352-4ce4-9519-5de655ad9361', '71a9971e-e829-43a9-9b2f-4565c855d664', '5083e06b-024e-46be-9cd2-892b814f1fc8', '95894cfd-82f7-430d-af6e-84d168bc34f5']
+
+[:5083e06b-024e-46be-9cd2-892b814f1fc8]
+background-color='#24273a'
+bold-is-bright=true
+cursor-background-color='#f4dbd6'
+cursor-colors-set=true
+cursor-foreground-color='#24273a'
+foreground-color='#cad3f5'
+highlight-background-color='#f4dbd6'
+highlight-colors-set=true
+highlight-foreground-color='#5b6078'
+palette=['#494d64', '#ed8796', '#a6da95', '#eed49f', '#8aadf4', '#f5bde6', '#8bd5ca', '#a5adcb', '#5b6078', '#ec7486', '#8ccf7f', '#e1c682', '#78a1f6', '#f2a9dd', '#63cbc0', '#b8c0e0']
+use-theme-colors=false
+visible-name='Catppuccin Macchiato'
+
+[:71a9971e-e829-43a9-9b2f-4565c855d664]
+background-color='#303446'
+bold-is-bright=true
+cursor-background-color='#f2d5cf'
+cursor-colors-set=true
+cursor-foreground-color='#303446'
+font='AnnotationM Nerd Font 10'
+foreground-color='#c6d0f5'
+highlight-background-color='#f2d5cf'
+highlight-colors-set=true
+highlight-foreground-color='#626880'
+palette=['#51576d', '#e78284', '#a6d189', '#e5c890', '#8caaee', '#f4b8e4', '#81c8be', '#a5adce', '#626880', '#e67172', '#8ec772', '#d9ba73', '#7b9ef0', '#f2a4db', '#5abfb5', '#b5bfe2']
+scrollbar-policy='never'
+use-system-font=false
+use-theme-colors=false
+visible-name='Catppuccin Frappe'
+
+[:95894cfd-82f7-430d-af6e-84d168bc34f5]
+background-color='#1e1e2e'
+bold-is-bright=true
+cursor-background-color='#f5e0dc'
+cursor-colors-set=true
+cursor-foreground-color='#1e1e2e'
+font='AnnotationM Nerd Font Mono 10'
+foreground-color='#cdd6f4'
+highlight-background-color='#f5e0dc'
+highlight-colors-set=true
+highlight-foreground-color='#585b70'
+palette=['#45475a', '#f38ba8', '#a6e3a1', '#f9e2af', '#89b4fa', '#f5c2e7', '#94e2d5', '#a6adc8', '#585b70', '#f37799', '#89d88b', '#ebd391', '#74a8fc', '#f2aede', '#6bd7ca', '#bac2de']
+scrollbar-policy='never'
+use-system-font=false
+use-theme-colors=false
+visible-name='Catppuccin Mocha'
+
+[:de8a9081-8352-4ce4-9519-5de655ad9361]
+background-color='#eff1f5'
+bold-is-bright=true
+cursor-background-color='#dc8a78'
+cursor-colors-set=true
+cursor-foreground-color='#eff1f5'
+font='AnnotationM Nerd Font 10'
+foreground-color='#4c4f69'
+highlight-background-color='#dc8a78'
+highlight-colors-set=true
+highlight-foreground-color='#acb0be'
+palette=['#5c5f77', '#d20f39', '#40a02b', '#df8e1d', '#1e66f5', '#ea76cb', '#179299', '#acb0be', '#6c6f85', '#de293e', '#49af3d', '#eea02d', '#456eff', '#fe85d8', '#2d9fa8', '#bcc0cc']
+scrollbar-policy='never'
+use-system-font=false
+use-theme-colors=false
+visible-name='Catppuccin Latte'

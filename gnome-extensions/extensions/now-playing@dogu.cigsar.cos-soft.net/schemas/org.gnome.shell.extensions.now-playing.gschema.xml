@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.now-playing" path="/org/gnome/shell/extensions/now-playing/">
+    <key name="panel-position" type="s">
+      <default>'right'</default>
+      <summary>Panel position</summary>
+      <description>Choose which panel box contains the now playing indicator.</description>
+    </key>
+    <key name="show-panel-text" type="b">
+      <default>true</default>
+      <summary>Show panel text</summary>
+      <description>Hide the track text and keep only the icon in the top bar.</description>
+    </key>
+    <key name="panel-text-width" type="i">
+      <default>180</default>
+      <range min="80" max="400"/>
+      <summary>Panel text width</summary>
+      <description>Maximum width for the text shown in the panel.</description>
+    </key>
+    <key name="panel-text-format" type="s">
+      <default>'artist-title'</default>
+      <summary>Panel text format</summary>
+      <description>Choose how track information is presented in the panel, including a progress bar.</description>
+    </key>
+    <key name="enable-marquee" type="b">
+      <default>true</default>
+      <summary>Enable marquee</summary>
+      <description>Scroll long text in the panel instead of truncating it.</description>
+    </key>
+  </schema>
+</schemalist>

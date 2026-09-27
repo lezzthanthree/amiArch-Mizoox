@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<application-state>
+  <context id="">
+    <application id="gparted.desktop" score="34" last-seen="1790347487"/>
+    <application id="code-oss.desktop" score="169" last-seen="1790515507"/>
+    <application id="org.gnome.tweaks.desktop" score="137" last-seen="1790307417"/>
+    <application id="org.gnome.Loupe.desktop" score="21" last-seen="1790308666"/>
+    <application id="org.gnome.Software.desktop" score="33" last-seen="1790068417"/>
+    <application id="org.gnome.Shell.Extensions.desktop" score="385" last-seen="1790475927"/>
+    <application id="org.gnome.SystemMonitor.desktop" score="0" last-seen="1789994840"/>
+    <application id="org.gnome.Characters.desktop" score="0" last-seen="1789962920"/>
+    <application id="discord.desktop" score="93" last-seen="1790514997"/>
+    <application id="org.gnome.Terminal.Preferences.desktop" score="56" last-seen="1790314850"/>
+    <application id="com.mattjakeman.ExtensionManager.desktop" score="131" last-seen="1790475930"/>
+    <application id="spotify-launcher.desktop" score="24" last-seen="1790353872"/>
+    <application id="org.gnome.Nautilus.desktop" score="445" last-seen="1790515550"/>
+    <application id="firefox-developer-edition.desktop" score="3680" last-seen="1790515431"/>
+    <application id="sonora.desktop" score="62" last-seen="1790085008"/>
+    <application id="org.telegram.desktop.desktop" score="307" last-seen="1790514996"/>
+    <application id="albert.desktop" score="15" last-seen="1790303845"/>
+    <application id="org.gnome.Terminal.desktop" score="714" last-seen="1790515509"/>
+    <application id="Alacritty.desktop" score="1124" last-seen="1790475939"/>
+    <application id="org.gnome.Tecla.desktop" score="0" last-seen="1790083471"/>
+    <application id="org.gnome.DiskUtility.desktop" score="1" last-seen="1790347503"/>
+    <application id="org.gnome.Extensions.desktop" score="5" last-seen="1790009901"/>
+    <application id="org.gnome.Settings.desktop" score="139" last-seen="1790308433"/>
+  </context>
+</application-state>

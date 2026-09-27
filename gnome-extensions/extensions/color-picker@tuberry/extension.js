@@ -1,0 +1,636 @@
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import St from 'gi://St';
+import Gio from 'gi://Gio';
+import Cairo from 'gi://cairo';
+import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
+
+import * as T from './util.js';
+import * as M from './menu.js';
+import * as F from './fubar.js';
+import {Key as K, Preset} from './const.js';
+
+import Color from './color.js';
+
+const {_} = F;
+const {$, $$, $_} = T;
+
+const Format = T.omap(Preset, ([k, v]) => [[v, k]]);
+
+class ColorSlider extends Slider.Slider {
+    static {
+        T.enrol(this);
+    }
+
+    constructor(form, value, step, color, callback) {
+        super(value)[$].set({$meta: {form, step, color}}).connect('notify::value', () => callback(form, this.value));
+    }
+
+    get rtl() {
+        return this.get_text_direction() === Clutter.TextDirection.RTL;
+    }
+
+    vfunc_repaint() {
+        let cr = this.get_context(),
+            {color, form} = this.$meta,
+            [width, height] = this.get_surface_size(),
+            barLevelRadius = Math.min(width, this._barLevelHeight) / 2,
+            gradient = new Cairo.LinearGradient(0, 0, width, 0)[$$].addColorStopRGBA(color.toStops(form, this.rtl));
+        cr.arc(barLevelRadius, height / 2, barLevelRadius, Math.PI * (1 / 2), Math.PI * (3 / 2));
+        cr.arc(width - barLevelRadius, height / 2, barLevelRadius, Math.PI * 3 / 2, Math.PI / 2);
+        cr.setSource(gradient);
+        cr.fill();
+
+        let ceiledHandleRadius = Math.ceil(this._handleRadius),
+            handleX = ceiledHandleRadius + (width - 2 * ceiledHandleRadius) * this._value / this._maxValue,
+            handleY = height / 2;
+        if(this.rtl) handleX = width - handleX;
+        cr.setSourceRGB(...color.toRGB());
+        cr.arc(handleX, handleY, this._handleRadius, 0, 2 * Math.PI);
+        cr.fill();
+        cr.setSourceColor(this.get_theme_node().get_foreground_color());
+        cr.arc(handleX, handleY, barLevelRadius, 0, 2 * Math.PI);
+        cr.fill();
+
+        cr.$dispose();
+    }
+
+    $update(delta, invert) {
+        this._applyDelta(delta * (invert ? -1 : 1) * this.$meta.step);
+    }
+
+    vfunc_key_press_event(event) {
+        switch(event.get_key_symbol()) {
+        case Clutter.KEY_Left: this.$update(-1, this.rtl); break;
+        case Clutter.KEY_Right: this.$update(1, this.rtl); break;
+        default: return super.vfunc_key_press_event(event);
+        }
+        return Clutter.EVENT_STOP;
+    }
+
+    vfunc_scroll_event(event) {
+        if(event.get_flags() & Clutter.EventFlags.FLAG_POINTER_EMULATED) return Clutter.EVENT_PROPAGATE;
+        switch(event.get_scroll_direction()) {
+        case Clutter.ScrollDirection.UP: this.$update(1); break;
+        case Clutter.ScrollDirection.DOWN: this.$update(-1); break;
+        case Clutter.ScrollDirection.SMOOTH: this.$update(event.get_scroll_delta()[0],
+            T.xnor(this.rtl, event.get_scroll_flags() & Clutter.ScrollFlags.INVERTED)); break;
+        }
+        return Clutter.EVENT_STOP;
+    }
+}
+
+class ColorMenu extends PopupMenu.PopupMenu {
+    constructor(color) {
+        let cursor = Main.layoutManager.dummyCursor;
+        super(cursor, 0.1, St.Side.LEFT)[$].$color(color)[$]
+            .$formats(T.array(color.formats.length).slice(Preset.length))[$]
+            .$manager(new PopupMenu.PopupMenuManager(cursor)[$].addMenu(this))
+            .$addItems();
+    }
+
+    $addItems() {
+        let {r, g, b, Hu, Sl, Ll, Lo, Co, Ho} = this.$color.toItems((form, value, unit, step) => {
+            step ??= 1 / Math.max(unit ?? 1, 100);
+            let slider = new ColorSlider(form, value, step, this.$color, (...xs) => this.$updateSliders(...xs));
+            return new PopupMenu.PopupBaseMenuItem({activate: false})[$]
+                .set({setup: v => { slider._value = v; slider.queue_repaint(); }})[$]
+                .connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event))[$$]
+                .add_child([new St.Label({text: form.slice(0, 1).toUpperCase(), xExpand: false}), slider]);
+        });
+        M.Item.put(this, this.$menu = {
+            HEX: this.$genTitleItem(),
+            RGB: new M.Separator(), r, g, b,
+            HSL: new M.Separator(), Hu, Sl, Ll,
+            OKLCH: new M.Separator(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
+            custom: this.$genCustomSection(),
+        }); // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 and https://bottosson.github.io/posts/colorpicker/
+        Main.layoutManager.addTopChrome(this.actor[$].hide()[$].add_style_class_name('color-picker-menu')[$]
+            .connect('key-press-event', (_a, e) => M.altNum(e, this.$menu.HEX)));
+    }
+
+    $updateSliders(form, value) {
+        this.$color[$$].update(form && [[form, value]]).toItems((k, v) => k === form || this.$menu[k].setup(v));
+        Preset.slice(1).forEach(x => this.$menu[x].label.set_text(this.$color.toText(Format[x])));
+        this.$updateCustomLabels();
+        this.emit('color-changed');
+    }
+
+    $genCustomSection() {
+        let items = this.$formats.map(x => new M.Item('', () => this.$emitSelected(x)));
+        this.$updateCustomLabels = () => items.forEach((x, i) => x.label.set_text(this.$color.toText(this.$formats[i])));
+        return new PopupMenu.PopupMenuSection()[$$].addMenuItem(items.length ? [new M.Separator(_('Others')), ...items] : items);
+    }
+
+    $genTitleItem() {
+        return new M.Item('', () => this.emit('color-selected', this.$color), {can_focus: false})[$$]
+            .add_child(Preset.map(x => new St.Button({canFocus: true, label: x, styleClass: 'color-picker-button button'})[$]
+                .connect('clicked', () => this[$].close().$emitSelected(Format[x]))));
+    }
+
+    $emitSelected(format) {
+        this.$color.format = format;
+        this.emit('color-selected', this.$color);
+    }
+
+    summon(geometry) {
+        this.$updateSliders();
+        Main.layoutManager.setDummyCursorGeometry(...geometry);
+        this.open(BoxPointer.PopupAnimation.FULL);
+    }
+}
+
+class ColorLens extends St.DrawingArea {
+    static {
+        T.enrol(this);
+    }
+
+    constructor() {
+        let $zoom = 8 * F.theme().scaleFactor; // grid length
+        super({styleClass: 'color-picker-lens', width: 1, height: 1}).set({
+            $zoom, $unit: 1 / $zoom, $meta: {x: 0, y: 0, color: new Color(), pixels: [], area: [0, 0, 0, 0, 0]},
+        });
+    }
+
+    setup(lens) {
+        this.$meta = lens;
+        let s = this.$zoom;
+        let {x, y, area: [w, h, c_x, c_y]} = lens;
+        this[$].set_size((w + 2) * s, (h + 2) * s)[$]
+            .set_position(x - (c_x + 1) * s, y - (c_y + 1) * s)
+            .queue_repaint();
+    }
+
+    vfunc_repaint() {
+        let cr = this.get_context();
+        let {color, pixels, area: [w, h, c_x, c_y, r]} = this.$meta;
+        cr.scale(this.$zoom, this.$zoom);
+        cr.translate(1, 1);
+        // clipRing
+        cr.save();
+        cr.setLineWidth(1);
+        cr.setSourceRGB(...color.toRGB());
+        cr.arc(c_x + 1 / 2, c_y + 1 / 2, r + 1 / 2, 0, Math.PI * 2);
+        cr.strokePreserve();
+        cr.setLineWidth(1 / 2);
+        cr.setSourceRGBA(1, 1, 1, 0.5);
+        cr.strokePreserve();
+        cr.restore();
+        cr.clip();
+        // fillGrid
+        let r1 = r + 1;
+        for(let i = 0; i < w; i++) {
+            for(let j = 0; j < h; j++) {
+                if(Math.hypot(i - c_x, j - c_y) > r1) continue;
+                let [red, g, b] = pixels.slice((j * w + i) * 4, -1);
+                cr.setSourceRGBA(red / 255, g / 255, b / 255, 1);
+                cr.rectangle(i, j, 1, 1);
+                cr.fill();
+            }
+        }
+        // lineGrid
+        let l = Math.max(w, h);
+        cr.setLineWidth(this.$unit);
+        cr.setSourceRGBA(0, 0, 0, 0.4);
+        for(let i = 0; i <= l; i++) {
+            cr.moveTo(i, 0);
+            cr.lineTo(i, l);
+            cr.moveTo(0, i);
+            cr.lineTo(l, i);
+        }
+        cr.stroke();
+        // showPixel
+        cr.setLineWidth(this.$unit * 2);
+        cr.setSourceRGB(...color.toComplement());
+        cr.rectangle(c_x, c_y, 1, 1);
+        cr.stroke();
+
+        cr.$dispose();
+    }
+}
+
+class ColorViewer extends BoxPointer.BoxPointer {
+    static {
+        T.enrol(this);
+    }
+
+    constructor(plain) {
+        super(St.Side.TOP)[$].set({
+            visible: false, styleClass: 'color-picker-boxpointer',
+            $src: F.Source.tie(this, {lens: this.$genLens(plain)}),
+        }).bin.set_child(new St.Label({styleClass: 'color-picker-label'}));
+        Main.layoutManager.addTopChrome(this);
+    }
+
+    $genLens(plain) {
+        this.$align = plain ? 0 : 1 / 2;
+        return (plain ? new Clutter.Actor({opacity: 0, width: 12, height: 12})[$].set({setup({x, y}) { this.set_position(x, y); }})
+            : new ColorLens())[$_](it => Main.layoutManager.addTopChrome(it));
+    }
+
+    get extents() {
+        return this.get_transformed_position()[$].push(...this.get_transformed_size());
+    }
+
+    summon(view) {
+        this[$].setup(view.color)[$]
+            .setPosition(this.$src.lens[$].setup(view), this.$align)
+            .open(BoxPointer.PopupAnimation.NONE);
+    }
+
+    setup(color) {
+        F.marks(this.bin.child, color.toPreview());
+    }
+}
+
+class ColorArea extends St.Widget {
+    static {
+        T.enrol(this, null, {
+            Signals: {
+                'end-pick': {param_types: [GObject.TYPE_BOOLEAN]},
+                'notify-color': {param_types: [GObject.TYPE_JSOBJECT]},
+            },
+        });
+        this.Preview = {LENS: 0, LABEL: 1};
+    }
+
+    constructor(set, once, ...args) {
+        super({reactive: true, styleClass: 'screenshot-ui-screen-screenshot'})[$]
+            .$buildWidgets(...args)[$].$bindSettings(set, once)[$].$buildSources().$initContents();
+    }
+
+    $bindSettings(set, once) {
+        this.$set = set.tie(this, [
+            K.MKEY, K.QKEY,
+            [K.PRST, x => { this.$once = once || !x; }],
+            [K.MENU, null, x => this.$src.format.toggle(x)],
+        ], [
+            [K.PVW,  null, x => this.$src.viewer.toggle(x)],
+            [K.PVWS, x => x === ColorArea.Preview.LABEL, x => this.$src.viewer.reload(x)],
+        ], null, () => this.$onViewerSet());
+    }
+
+    $buildWidgets(format, formats) {
+        Main.layoutManager.addTopChrome(this);
+        Main.pushModal(this, {actionMode: Shell.ActionMode.POPUP});
+        Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // show notifications in persistent mode
+        this[$].add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}))[$]
+            .add_action(new Clutter.ClickGesture()[$].connect('recognize', a => this.$onClick(a)))[$]
+            .connect('popup-menu', () => this.$src.format.hub?.summon(this.$src.viewer?.hub?.extents ?? this.$coords.concat(12, 12))).set({
+                $ptr: Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE),
+                $color: Color.newForFormat(format, formats),
+            });
+    }
+
+    $buildSources() {
+        let cursor = new F.Source((x = this.cursor) => x && global.stage.get_grab_actor()?.set_cursor_type(x),
+                () => global.stage.get_grab_actor()?.set_cursor_type(Clutter.CursorType.DEFAULT), true),
+            format = F.Source.new(() => new ColorMenu(this.$color)[$$].connect([
+                ['open-state-changed', (_w, open) => this.$src.cursor.toggle(!open)],
+                ['color-changed', () => this.$src.viewer?.hub?.setup(this.$color)],
+                ['color-selected', () => this.$emitColor()],
+            ]), this[K.MENU]),
+            viewer = F.Source.new(() => new ColorViewer(this[K.PVWS]), this[K.PVW]);
+        this.$src = F.Source.tie(this, {cursor, format, viewer});
+    }
+
+    async $initContents() {
+        let [content, scale] = await new Shell.Screenshot().screenshot_stage_to_content();
+        let texture = content.get_texture();
+        this.set_content(content);
+        this.$meta = {scale, texture, width: texture.get_width() - 1, height: texture.get_height() - 1};
+        this.$pick = this._pick;
+        if(this.$coords) this.$pick(this.$coords);
+    }
+
+    $onViewerSet() {
+        this.$src.cursor.summon();
+        this.$moveBy(0, 0, {get_state: T.nop}); // HACK: workaround for stale cursor on scrolling since https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/4745
+        if(this.$coords) this.$pick(this.$coords);
+    }
+
+    get cursor() {
+        return !this[K.PVW] || this[K.PVWS] ? Clutter.CursorType.CROSSHAIR : Clutter.CursorType.NONE;
+    }
+
+    $pick(coords) {
+        this.$coords = coords;
+    }
+
+    _pick(coords) {
+        this.$coords = coords;
+        let [x, y] = coords.map(Math.round),
+            {scale, width, height, texture} = this.$meta,
+            stream = Gio.MemoryOutputStream.new_resizable(),
+            [a, b, w, h, c_x, c_y, r] = this.$getLoupe(x, y, scale, width, height);
+        return Shell.Screenshot.composite_to_stream(texture, a, b, w, h, scale, null, 0, 0, 1, stream).then(pixbuf => {
+            let pixels = pixbuf.get_pixels();
+            this.$color.fromPixels(pixels, (c_y * w + c_x) * 4);
+            this.$src.viewer?.hub?.summon({x, y, color: this.$color, pixels, area: [w, h, c_x, c_y, r]});
+        }).catch(() => this.emit('end-pick', true)).finally(() => stream.close(null));
+    }
+
+    $getLoupe(x, y, scale, width, height) {
+        x = Math.clamp(Math.round(x * scale), 0, width);
+        y = Math.clamp(Math.round(y * scale), 0, height);
+        if(this[K.PVWS]) return [x, y, 1, 1, 0, 0, 0];
+        let r = 10,
+            a = Math.max(x - r, 0),
+            b = Math.max(y - r, 0),
+            w = Math.min(x, width - x, r) + r + 1,
+            h = Math.min(y, height - y, r) + r + 1;
+        return [a, b, w, h, x - a, y - b, r];
+    }
+
+    $emitColor() {
+        this[$].emit('notify-color', this.$color)[$$].emit(this.$once && [['end-pick', false]]);
+    }
+
+    vfunc_motion_event(event) {
+        this.$pick(event.get_coords());
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    vfunc_enter_event(event) {
+        this.$pick(event.get_coords());
+        return super.vfunc_enter_event(event);
+    }
+
+    $moveBy(dx, dy, event) {
+        let step = event.get_state() & Clutter.ModifierType.CONTROL_MASK ? 8 : 1;
+        this.$ptr.notify_relative_motion(global.get_current_time(), dx * step, dy * step);
+    }
+
+    vfunc_key_press_event(event) {
+        switch(event.get_key_symbol()) {
+        case Clutter.KEY_Escape:
+        case Clutter[`KEY_${this[K.QKEY]}`]: this.emit('end-pick', true); break;
+        case Clutter[`KEY_${this[K.MKEY]}`]: this.emit('popup-menu'); break;
+        case Clutter.KEY_a:
+        case Clutter.KEY_h:
+        case Clutter.KEY_Left: this.$moveBy(-1, 0, event); break;
+        case Clutter.KEY_w:
+        case Clutter.KEY_k:
+        case Clutter.KEY_Up: this.$moveBy(0, -1, event); break;
+        case Clutter.KEY_d:
+        case Clutter.KEY_l:
+        case Clutter.KEY_Right: this.$moveBy(1, 0, event); break;
+        case Clutter.KEY_s:
+        case Clutter.KEY_j:
+        case Clutter.KEY_Down: this.$moveBy(0, 1, event); break;
+        case Clutter.KEY_space:
+        case Clutter.KEY_Return:
+        case Clutter.KEY_KP_Enter:
+        case Clutter.KEY_ISO_Enter: this.$emitColor(); break;
+        case Clutter.KEY_Shift_L:
+        case Clutter.KEY_Shift_R: this.$set.set(K.PVWS, this[K.PVWS] ? ColorArea.Preview.LENS : ColorArea.Preview.LABEL, this); break;
+        default: return super.vfunc_key_press_event(event);
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    vfunc_scroll_event(event) {
+        switch(event.get_scroll_direction()) {
+        case Clutter.ScrollDirection.UP: if(this[K.PVWS]) this.$set.set(K.PVWS, ColorArea.Preview.LENS); break;
+        case Clutter.ScrollDirection.DOWN: if(!this[K.PVWS]) this.$set.set(K.PVWS, ColorArea.Preview.LABEL); break;
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    $onClick(gesture) {
+        switch(gesture.get_button()) {
+        case Clutter.BUTTON_PRIMARY: this.$emitColor(); break;
+        case Clutter.BUTTON_MIDDLE: this.emit('popup-menu'); break;
+        default: this.emit('end-pick', true); break;
+        }
+    }
+}
+
+class ColorItem extends M.DatumItemBase {
+    static {
+        T.enrol(this);
+    }
+
+    constructor(star, remove, color) {
+        super('color-picker-item-label', 'color-picker-icon', () => F.copy(this.$meta.text), color)
+            .set({$onRemove: () => remove(this.$meta.raw), $onClick: () => star(this.$meta.raw)});
+    }
+
+    activate(event) {
+        let type = event.type();
+        if((type === Clutter.EventType.BUTTON_RELEASE || type === Clutter.EventType.PAD_BUTTON_RELEASE) &&
+           event.get_button() === Clutter.BUTTON_MIDDLE) this.$onRemove();
+        else super.activate(event);
+    }
+
+    vfunc_key_press_event(event) {
+        let key = event.get_key_symbol();
+        if(key === Clutter.KEY_Delete || key === Clutter.KEY_BackSpace) {
+            this.$onRemove();
+            return Clutter.EVENT_STOP;
+        } else {
+            return super.vfunc_key_press_event(event);
+        }
+    }
+
+    setup(color) {
+        let [star, raw, fmts] = color;
+        color = new Color(raw, fmts);
+        F.marks(this.label, color.toMarkup());
+        this.$meta = {raw, text: color.toText()};
+        this.$btn.setIcon(star ? 'starred-symbolic' : 'non-starred-symbolic');
+    }
+}
+
+class ColorTray extends M.Systray {
+    static {
+        T.enrol(this);
+    }
+
+    constructor(set, ...args) {
+        super({})[$].$bindSettings(set).$buildWidgets(...args);
+    }
+
+    $bindSettings(set) {
+        this.$set = set.tie(this, [
+            [K.TICN, x => this.$icon.set_icon_name(x || 'color-select-symbolic')],
+            [K.MNSZ, x => { this.$tint = x > 0; }, () => this.$onMenuSizeSet(this.$tint)],
+        ], [
+            [K.MNTP, x => !!x, x => this.$menu.tool.star?.toggleState(x)], K.CLCT, K.HIST,
+        ], null, () => this.$onColorsSet());
+    }
+
+    $onMenuSizeSet(tint) {
+        if(T.xnor(tint, this.$menu.tint)) return;
+        if(!tint) [K.CLCT, K.HIST].forEach(x => this.$set.set(x, []));
+        this.$record(tint, 'sep1', null, 'tint', () => this.$genTintSection());
+        this.$menu.tool.setup(this.$genTool());
+    }
+
+    $genTintSection() {
+        return new M.DatasetSection(() => new ColorItem(
+            color => this.$set.set(K.CLCT, this[K.CLCT].includes(color)
+                ? this[K.CLCT].filter(x => x !== color) : [color, ...this[K.CLCT]].slice(0, this[K.MNSZ])),
+            color => this[K.MNTP] ? this.$set.set(K.CLCT, this[K.CLCT].filter(x => x !== color))
+                : this.$set.set(K.HIST, this[K.HIST].filter(x => x !== color))), this.$getColors());
+    }
+
+    $buildWidgets(formats, callback, fmts) {
+        this[$].set({$formats: formats, $callback: callback})[$].add_style_class_name('color-picker-systray')
+            .menu.actor[$].add_style_class_name('color-picker-menu').connect('key-press-event', (...xs) => this.$onKeyPress(...xs));
+        T.inject(this.menu, 'toggle', (o, f) => (...xs) => this._clickGesture.state === Clutter.GestureState.COMPLETED &&
+            this._clickGesture.get_button() === Clutter.BUTTON_PRIMARY ? this.$callback() : f.apply(o, xs));
+        M.Item.put(this.menu, this.$menu = {
+            fmts, sep0: fmts ? new M.Separator() : null,
+            tint: this.$tint ? this.$genTintSection() : null,
+            sep1: this.$tint ? new M.Separator() : null,
+            tool: new M.ToolItem(this.$genTool()),
+        });
+    }
+
+    $onKeyPress(_a, event) {
+        let key = event.get_key_symbol();
+        if(M.altNum(event, this.$menu.tool, key));
+        else if(key === Clutter.KEY_Shift_R) this.$set.not(K.MNTP);
+    }
+
+    $genTool() {
+        return [{
+            call: [() => { this.menu.close(); this.$callback(); }, 'find-location-symbolic'],
+            star: this.$tint ? [() => this.$set.not(K.MNTP), [this[K.MNTP], 'semi-starred-symbolic', 'starred-symbolic']] : null,
+            gear: [() => { this.menu.close(); F.me().openPreferences(); }, 'applications-system-symbolic'],
+        }, 'color-picker-icon'];
+    }
+
+    $onColorsSet() {
+        this.$menu.tint?.setup(this.$getColors());
+    }
+
+    $getColors() {
+        return this[K.MNTP] ? this[K.CLCT].map(x => [true, x, this.$formats])
+            : this[K.HIST].map(x => [this[K.CLCT].includes(x), x, this.$formats]);
+    }
+
+    addHistory(color) {
+        if(this.$tint) this.$set.set(K.HIST, [color, ...this[K.HIST]].slice(0, this[K.MNSZ]));
+    }
+
+    setFormats(formats) {
+        this[$].$formats(formats).$onColorsSet();
+    }
+}
+
+class ColorPicker extends F.Mortal {
+    static Notify = {MSG: 0, OSD: 1};
+    static Sound = {SCREENSHOT: 0, COMPLETE: 1};
+
+    $bindSettings(gset) {
+        this.$set = new F.Setting(gset, this, [
+            K.HEX, K.RGB, K.HSL, K.OKLCH,
+            [K.CFMT, x => this.$onCustomSet(x), () => this.$src.tray.hub?.$menu.fmts?.setup(this.$options)],
+        ], () => this.$onFormatsSet(), () => this.$src.tray.hub?.setFormats(this.$formats), [
+            K.SND, K.NTFS, K.NTF,
+            [K.COPY, x => x ? [] : null],
+            [K.DBUS, null, x => this.$src.dbus.toggle(x)],
+            [K.KEY,  null, x => this.$src.keys.toggle(x)],
+            [K.STRY, null, x => this.$src.tray.toggle(x)],
+            [K.FMT,  null, x => this.$onEnableFormatSet(x)],
+            [K.FMTS, null, x => this.$src.tray.hub?.$menu.fmts?.choose(x)],
+            [K.SNDS, x => x === ColorPicker.Sound.COMPLETE ? 'complete' : 'screen-capture'],
+        ]);
+    }
+
+    $buildSources() {
+        let tray = F.Source.new(() => this.$genSystray(), this[K.STRY]),
+            keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => this.summon(), this[K.KEY]),
+            area = F.Source.new((hooks, ...args) => new ColorArea(...args)[$$].connect(hooks)),
+            dbus = F.Source.newDBus(this, 'org.gnome.Shell.Extensions.ColorPicker', '/org/gnome/Shell/Extensions/ColorPicker', this[K.DBUS]);
+        this.$src = F.Source.tie(this, {tray, area, keys, dbus});
+    }
+
+    $onCustomSet(custom) {
+        return custom.filter(x => x.enable)[$_](it => { this.$options = Preset.concat(it.map(x => x.name)); });
+    }
+
+    $onFormatsSet() {
+        this.$formats = [K.HEX, K.RGB, K.HSL, K.OKLCH].map(x => this[x])[$].push(...this[K.CFMT].map(x => x.format));
+    }
+
+    $onEnableFormatSet(enable) {
+        this.$src.tray.hub?.$record(enable, 'sep0', null, 'fmts', () => this.$genFormatItem());
+    }
+
+    $genFormatItem() {
+        return new M.RadioItem(_('Default format'), this.$options, this[K.FMTS], x => this.$set.set(K.FMTS, x));
+    }
+
+    $genSystray() {
+        return new ColorTray(this.$set, this.$formats, () => this.summon(), this[K.FMT] ? this.$genFormatItem() : null);
+    }
+
+    summon() {
+        if(this.$src.area.active) return;
+        this.$src.tray.hub?.add_style_pseudo_class('state-busy'); // FIXME: not working on the first run
+        this.$src.area.summon([['end-pick', () => this.dispel()], ['notify-color', (_a, x) => this.inform(x)]],
+            this.$set, false, this[K.FMT] ? this[K.FMTS] : Format.HEX, this.$formats);
+    }
+
+    dispel() {
+        if(!this.$src.area.active) return;
+        this.$src.tray.hub?.remove_style_pseudo_class('state-busy');
+        if(this[K.COPY]?.length) F.copy(this[K.COPY].splice(0).join('\n'));
+        this.$src.area.dispel();
+    }
+
+    inform(color) {
+        let text = color.toText();
+        this[K.COPY]?.push(text);
+        this.$src.tray.hub?.addHistory(color.toRaw());
+        if(this[K.SND]) global.display.get_sound_player().play_from_theme(this[K.SNDS], _('Color picked'), null);
+        if(!this[K.NTF]) return;
+        let gicon = Gio.BytesIcon.new(T.encode(`<svg width="64" height="64" fill="${color.toHEX()}" viewBox="0 0 1 1">
+    <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/></svg>`));
+        if(this[K.NTFS] === ColorPicker.Notify.MSG) {
+            let title = F.me().metadata.name,
+                source = MessageTray.getSystemSource(),
+                message = new MessageTray.Notification({gicon, source, isTransient: true, title, body: _('%s is picked.').format(text)});
+            source.addNotification(message);
+        } else {
+            Main.osdWindowManager.showAll(gicon, text);
+        }
+    }
+
+    pickAsync() {
+        return new Promise((resolve, reject) => {
+            if(this.$src.area.active) throw Error('busy');
+            this.$src.tray.hub?.add_style_pseudo_class('state-busy');
+            this.$src.area.summon([['notify-color', (_a, color) => resolve(color.toRGB())],
+                ['end-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); }]], this.$set, true);
+        });
+    }
+
+    PickAsync(_p, invocation) {
+        return this.pickAsync().then(color => invocation.return_value(T.pickle([{color: T.pickle(color, '(ddd)')}], '(a{sv})')))
+            .catch(() => invocation.return_error_literal(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED, 'Operation was cancelled'));
+    }
+
+    Run = this.summon;
+}
+
+export default class extends F.Extension {
+    $klass = ColorPicker;
+    // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
+    pickAsync() {
+        if(!this[T.hub]) throw Error('disabled');
+        return this[T.hub].pickAsync();
+    }
+}

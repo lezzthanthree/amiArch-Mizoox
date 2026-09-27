@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.cursor-size" path="/org/gnome/shell/extensions/cursor-size/">
+    <key type="i" name="cursor-size">
+      <default>24</default>
+      <summary>Cursor Size</summary>
+      <description>Changes the size of the mouse cursor.</description>
+    </key>
+  </schema>
+</schemalist>

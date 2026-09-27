@@ -1,0 +1,46 @@
+gui:
+  nerdFontsVersion: "3"
+  showBottomLine: false
+  skipDiscardChangeWarning: true
+os:
+  editPreset: 'nvim'
+notARepository: 'skip'
+keybinding:
+  global:
+    undo: '<c-z>'
+    redo: '<c-y>'
+  files:
+    viewResetOptions: '<end>'
+  commits:
+    renameCommit: 'r'
+    viewResetOptions: '<delete>'
+confirmOnQuit: true
+theme:
+  activeBorderColor:
+    - '#f5c2e7'
+    - bold
+  inactiveBorderColor:
+    - '#a6adc8'
+  searchingActiveBorderColor:
+    - '#f9e2af'
+  optionsTextColor:
+    - '#89b4fa'
+  selectedLineBgColor:
+    - '#313244'
+  inactiveViewSelectedLineBgColor:
+    - '#6c7086'
+  cherryPickedCommitFgColor:
+    - '#f5c2e7'
+  cherryPickedCommitBgColor:
+    - '#45475a'
+  markedBaseCommitFgColor:
+    - '#89b4fa'
+  markedBaseCommitBgColor:
+    - '#f9e2af'
+  unstagedChangesColor:
+    - '#f38ba8'
+  defaultFgColor:
+    - '#cdd6f4'
+
+authorColors:
+  '*': '#b4befe'

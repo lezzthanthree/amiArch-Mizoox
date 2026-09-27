@@ -1,0 +1,18 @@
+{
+    "preset": "transgender",
+    "mode": "rgb",
+    "auto_detect_light_dark": true,
+    "light_dark": "light",
+    "lightness": 0.55,
+    "color_align": {
+        "mode": "horizontal"
+    },
+    "backend": "fastfetch",
+    "args": null,
+    "distro": null,
+    "pride_month_disable": false,
+    "custom_ascii_path": null,
+    "custom_presets": null,
+    "palette_glyph": null,
+    "palette_type": null
+}

@@ -1,0 +1,77 @@
+[[themes]]
+name = "Catppuccin Latte"
+
+[themes.palette]
+background = "#eff1f5"
+foreground = "#4c4f69"
+black = "#5c5f77"
+red = "#d20f39"
+green = "#40a02b"
+yellow = "#df8e1d"
+blue = "#1e66f5"
+magenta = "#ea76cb"
+cyan = "#179299"
+white = "#acb0be"
+bright_black = "#6c6f85"
+bright_red = "#de293e"
+bright_green = "#49af3d"
+bright_yellow = "#eea02d"
+bright_blue = "#456eff"
+bright_magenta = "#fe85d8"
+bright_cyan = "#2d9fa8"
+bright_white = "#bcc0cc"
+
+[themes.component_style]
+block_title = { fg = "#7287fd", modifiers = ["Bold"] }
+border = { fg = "#9ca0b0" }
+playback_status = { fg = "#8839ef", modifiers = ["Bold"] }
+playback_track = { fg = "#4c4f69", modifiers = ["Bold"] }
+playback_artists = { fg = "#1e66f5", modifiers = ["Bold"] }
+playback_album = { fg = "#dc8a78" }
+playback_metadata = { fg = "#8c8fa1" }
+playback_progress_bar = { fg = "#8839ef", bg = "#ccd0da" }
+current_playing = { fg = "#40a02b", modifiers = ["Bold"] }
+page_desc = { fg = "#7287fd", modifiers = ["Bold"] }
+playlist_desc = { fg = "#8c8fa1" }
+table_header = { fg = "#7287fd", modifiers = ["Bold"] }
+selection = { bg = "#ccd0da", modifiers = ["Bold"] }
+visualization = { low = "#fe85d8", mid = "#456eff", high = "#8839ef" }
+
+[[themes]]
+name = "Catppuccin Mocha"
+
+[themes.palette]
+background = "#1e1e2e"
+foreground = "#cdd6f4"
+black = "#45475a"
+red = "#f38ba8"
+green = "#a6e3a1"
+yellow = "#f9e2af"
+blue = "#89b4fa"
+magenta = "#f5c2e7"
+cyan = "#94e2d5"
+white = "#a6adc8"
+bright_black = "#585b70"
+bright_red = "#f37799"
+bright_green = "#89d88b"
+bright_yellow = "#ebd391"
+bright_blue = "#74a8fc"
+bright_magenta = "#f2aede"
+bright_cyan = "#6bd7ca"
+bright_white = "#bac2de"
+
+[themes.component_style]
+block_title = { fg = "#b4befe", modifiers = ["Bold"] }
+border = { fg = "#6c7086" }
+playback_status = { fg = "#cba6f7", modifiers = ["Bold"] }
+playback_track = { fg = "#cdd6f4", modifiers = ["Bold"] }
+playback_artists = { fg = "#89b4fa", modifiers = ["Bold"] }
+playback_album = { fg = "#f5e0dc" }
+playback_metadata = { fg = "#7f849c" }
+playback_progress_bar = { fg = "#cba6f7", bg = "#313244" }
+current_playing = { fg = "#a6e3a1", modifiers = ["Bold"] }
+page_desc = { fg = "#b4befe", modifiers = ["Bold"] }
+playlist_desc = { fg = "#7f849c" }
+table_header = { fg = "#b4befe", modifiers = ["Bold"] }
+selection = { bg = "#313244", modifiers = ["Bold"] }
+visualization = { low = "#f2aede", mid = "#74a8fc", high = "#f38ba8" }
