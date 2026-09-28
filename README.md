@@ -7,8 +7,8 @@ An Arch Linux setup in a theme of Akiyama Mizuki from Project SEKAI.
 ## Setup
 * OS: Arch Linux
 * Window Manager: GNOME 50.5
+* Display Manager: SDDM (themed using Pixie)
 * Terminal: GNOME Terminal
-* Greeter: SDDM (themed using Pixie)
 * Shell: starship
 * Launcher: albert
 * Font: Annotation Mono Nerd Font, Monofur Nerd Font 
